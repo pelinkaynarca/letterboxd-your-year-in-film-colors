@@ -1,7 +1,7 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
 const cors = require('cors');
-const { extractColors } = require('extract-colors');
+const Vibrant = require('node-vibrant');
 
 const app = express();
 const port = 3000;
@@ -9,64 +9,60 @@ const port = 3000;
 app.use(cors());
 app.use(express.static('public'));
 
-// create a single browser instance and reuse it
+// launch a headless browser instance
 const browserPromise = puppeteer.launch({
   headless: "new",
   ignoreHTTPSErrors: true,
 });
 
+// handle the '/scrape' endpoint
 app.get('/scrape', async (req, res) => {
   try {
+    // extract query parameters
     const nickname = req.query.nickname;
     const year = req.query.year;
     const baseUrl = `https://letterboxd.com/${nickname}/films/diary/for/${year}/page/`;
 
+    // scrape data from the provided URL
     const scrapedData = await scrapePages(baseUrl);
 
+    // generate color palette for each film
     const colorPaletteData = await generateColorPalette(scrapedData);
 
+    // send the color palette data as a json response
     res.json(colorPaletteData);
   } catch (error) {
+    // handle errors during scraping
     console.error('Error during scraping:', error.message);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
-
 
 async function scrapePages(baseUrl) {
   const scrapedData = [];
   let currentPage = 1;
 
   try {
-    // reuse the same browser instance
     const browser = await browserPromise;
 
-    // continue looping until there are no more entries on the page
     while (true) {
-      // build the URL for the current page
       const pageUrl = `${baseUrl}${currentPage}/`;
-
-      // open a new page for each iteration
       const page = await browser.newPage();
       await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.88 Safari/537.36');
-
-      // navigate to the page
       await page.goto(pageUrl, { waitUntil: 'domcontentloaded' });
 
-
-      // wait for the actual image to load (adjust the selector accordingly)
       console.log('Navigated to page:', pageUrl);
-      // extract film entries from the current page
+
       const entries = await page.$$('td.td-film-details');
 
-      // scroll down multiple times
+      // scroll down multiple times to load more entries
       for (let i = 0; i < 5; i++) {
         await page.evaluate(() => {
-        window.scrollBy(0, window.innerHeight);
-      });
-      // wait for a short delay before extracting data
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
+          window.scrollBy(0, window.innerHeight);
+        });
+        // wait for a short delay before extracting data
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
 
       // if no entries are found, exit the loop
       if (entries.length === 0) {
@@ -75,24 +71,27 @@ async function scrapePages(baseUrl) {
 
       // process each entry on the page
       for (const entry of entries) {
-        // extract film name and poster URL from the entry
-        const filmName = await entry.$eval('td.td-film-details h3 a', (link) => link.textContent.trim());
-        // extract the actual image URL after scrolling
-        const filmPosterUrl = await entry.$eval('td.td-film-details div.poster img.image', (img) => img.src || img.getAttribute('src'));
+        try {
+          // extract film name and poster URL from the entry
+          const filmNameElement = await entry.$('td.td-film-details h3 a');
+          const filmName = await (filmNameElement ? filmNameElement.evaluate(node => node.textContent.trim()) : null);
 
+          const filmPosterElement = await entry.$('td.td-film-details div.poster img.image');
+          const filmPosterUrl = await (filmPosterElement ? filmPosterElement.evaluate(img => img.src || img.getAttribute('src')) : null);
 
-        // ensure the URL is valid before pushing to scrapedData
-        if (filmPosterUrl && filmPosterUrl !== 'undefined') {
-          scrapedData.push({ filmName, filmPosterUrl });
-        } else {
-          console.error(`Error extracting poster URL for film: ${filmName}`);
+          // ensure the URL and film name are valid before pushing to scrapeddata
+          if (filmPosterUrl && filmPosterUrl !== 'undefined' && filmName) {
+            scrapedData.push({ filmName, filmPosterUrl });
+          } else {
+            console.error(`Error extracting poster URL or film name for an entry`);
+          }
+        } catch (error) {
+          console.error('Error processing entry:', error.message);
         }
       }
 
       // close the page after scraping
       await page.close();
-
-      // move to the next page
       currentPage++;
     }
 
@@ -104,36 +103,20 @@ async function scrapePages(baseUrl) {
   }
 }
 
-// function to generate a color palette for each film in the provided data
 async function generateColorPalette(scrapedData) {
   const colorPaletteData = [];
 
   // iterate over each film entry
   for (const entry of scrapedData) {
     try {
-      // reuse the same browser instance
-      const browser = await browserPromise;
+      const palette = await Vibrant.from(entry.filmPosterUrl).getPalette();
 
-      // open a new page for each iteration
-      const page = await browser.newPage();
-
-      const response = await page.goto(entry.filmPosterUrl, { waitUntil: 'load' });
-      const imageDataBuffer = await response.buffer();
-
-      const colorPaletteEntry = await extractColors({
-        data: Array.from(imageDataBuffer),
-        width: 1,
-        height: imageDataBuffer.length / 4,
-      });
-
-      const dominantColor = colorPaletteEntry[0]?.hex || null;
+      // extract the dominant color if Vibrant color is available
+      const dominantColor = palette.Vibrant ? palette.Vibrant.hex : null;
 
       console.log(`Film: ${entry.filmName}, Poster URL: ${entry.filmPosterUrl}, Dominant Color: ${dominantColor}`);
 
       colorPaletteData.push({ filmName: entry.filmName, dominantColor });
-
-      // close the page after generating color palette
-      await page.close();
     } catch (error) {
       console.error('Error generating color palette:', error.message);
       console.log(`Film: ${entry.filmName}, Poster URL: ${entry.filmPosterUrl}, Error: ${error.message}`);

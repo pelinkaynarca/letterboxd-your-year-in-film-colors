@@ -28,13 +28,7 @@ function renderColorPalette(colorPaletteData) {
     colorPaletteData.forEach(({ filmName, dominantColor }) => {
       const colorBox = document.createElement('div');
       colorBox.classList.add('color-box');
-      colorBox.style.backgroundColor = dominantColor;
-
-      const filmNameElement = document.createElement('div');
-      filmNameElement.classList.add('film-name');
-      filmNameElement.textContent = filmName;
-
-      colorBox.appendChild(filmNameElement);
+      colorBox.style.backgroundColor = dominantColor || 'transparent';
       colorPaletteContainer.appendChild(colorBox);
     });
   } else {
