@@ -1,4 +1,4 @@
-const serverBaseUrl = 'http://localhost:3000'; // Change this to the actual base URL when deploying
+const serverBaseUrl = 'http://localhost:3000'; 
 
 async function startScraping() {
   const nickname = document.getElementById('nickname').value;

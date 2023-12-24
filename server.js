@@ -79,7 +79,7 @@ async function scrapePages(baseUrl) {
           const filmPosterElement = await entry.$('td.td-film-details div.poster img.image');
           const filmPosterUrl = await (filmPosterElement ? filmPosterElement.evaluate(img => img.src || img.getAttribute('src')) : null);
 
-          // ensure the URL and film name are valid before pushing to scrapeddata
+          // ensure the URL and film name are valid before pushing to scrapedData
           if (filmPosterUrl && filmPosterUrl !== 'undefined' && filmName) {
             scrapedData.push({ filmName, filmPosterUrl });
           } else {
