@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,32 +8,58 @@
   <script src="/public/script.js" defer></script>
   <style>
 
-    #colorPalette {
-      width: 50%;
-      margin-top: 10px;
-      display: flex;
-      flex-wrap: wrap;
-      flex-direction: row;
-      gap: 2px;
-
+    td {
+      width: 10px;
+      height: 10px;
     }
 
-    .color-box {
-      width: 50px;
-      height: 50px;
-      display: inline-block;
+    #homepageHeader {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #homepageInputContainer {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    #homepageGenerateCalendarButton {
+      margin-top: 10px;
+      margin-bottom: 20px;
+    }
+    
+    #calendar {
+      margin-left: auto;
+      margin-right: auto;
     }
 
   </style>
 </head>
+
 <body>
-  <div>
-    <label for="nickname">Nickname:</label>
-    <input type="text" id="nickname" placeholder="Enter nickname">
-    <label for="year">Year:</label>
-    <input type="text" id="year" placeholder="Enter year">
-    <button onclick="startScraping()">Fetch Color Palette</button>
+  <div id="homepageHeader">
+    <div>
+      <h1>Explore your Year in Film Colors</h1>
+      <h3>Simply enter your Letterboxd username and the year, and let Year in Film Colors craft a personalized calendar
+        for you, with each day colored with the extracted hues from the posters of the films you watched throughout the
+        year!</h3>
+    </div>
+    <div id="homepageInputContainer">
+      <label for="username">Letterboxd Username:</label>
+      <input type="text" id="username" placeholder="Enter username">
+      <label for="year">Year:</label>
+      <input type="text" id="year" placeholder="Enter year">
+      <button onclick="fetchColorPalette()" id="homepageGenerateCalendarButton">Generate Your Calendar</button>
+    </div>
   </div>
-  <div id="colorPalette"></div>
+  <table id="calendar">
+  </table>
 </body>
+<footer>
+
+</footer>
+
 </html>
